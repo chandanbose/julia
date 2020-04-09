@@ -456,6 +456,10 @@ static void jl_serialize_module(jl_serializer_state *s, jl_module_t *m)
     for (i = 1; i < m->bindings.size; i += 2) {
         if (table[i] != HT_NOTFOUND) {
             jl_binding_t *b = (jl_binding_t*)table[i];
+            // in Main, only save external bindings if they are explicitly imported.
+            // otherwise bindings resolved for system image building code stay around.
+            if (m == jl_main_module && b->owner != m && !b->imported)
+                continue;
             jl_serialize_value(s, b->name);
             jl_value_t *e = b->value;
             if (!b->constp && e && jl_is_cpointer(e) && jl_unbox_voidpointer(e) != (void*)-1 && jl_unbox_voidpointer(e) != NULL)
