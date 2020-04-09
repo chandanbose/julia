@@ -102,12 +102,18 @@ function print_matrix_row(io::IO,
             x = X[i,j]
             a = alignment(io, x)
 
-            # First try 3-arg show
-            sx = sprint(show, "text/plain", x, context=io, sizehint=0)
-
-            # If the output contains line breaks, try 2-arg show instead.
-            if occursin('\n', sx)
+            if x isa AbstractArray && isempty(x)
+                # empty arrays have single-line output, but it's not ideal for
+                # showing array elements. use parseable output instead.
                 sx = sprint(show, x, context=io, sizehint=0)
+            else
+                # First try 3-arg show
+                sx = sprint(show, "text/plain", x, context=io, sizehint=0)
+
+                # If the output contains line breaks, try 2-arg show instead.
+                if occursin('\n', sx)
+                    sx = sprint(show, x, context=io, sizehint=0)
+                end
             end
         else
             a = undef_ref_alignment
@@ -421,7 +427,12 @@ _show_nonempty(io::IO, X::AbstractArray{T,0} where T, prefix::String) = print_ar
 
 # NOTE: it's not clear how this method could use the :typeinfo attribute
 _show_empty(io::IO, X::Array{T}) where {T} = print(io, "Array{", T, "}(undef,", join(size(X),','), ')')
-_show_empty(io, X) = nothing # by default, we don't know this constructor
+function _show_empty(io, X::AbstractArray)
+    show(io, typeof(X))
+    print(io, "(")
+    show(io, convert(Array, X))
+    print(io, ")")
+end
 
 # typeinfo aware (necessarily)
 function show(io::IO, X::AbstractArray)
